@@ -162,23 +162,22 @@ function init(config: VueKeycloakConfig, watch: VueKeycloakInstance, options:Vue
       options.onAuthLogout(keycloak)
     }
   }
-  keycloak
-    .init(options.init)
-    .then((authenticated) => {
+  try {
+      const authenticated = await keycloak.init(options.init)
       updateWatchVariables(authenticated)
       if (typeof options.onInitSuccess === 'function') {
         options.onInitSuccess(authenticated)
       }
-    })
-    .catch((err:KeycloakError) => {
+    } catch (err: unknown) {
       updateWatchVariables(false)
-      const error = Error('Failure during initialization of keycloak-js adapter')
+      const error = new Error('Failure during initialization of keycloak-js adapter', { cause: err })
       if (typeof options.onInitError === 'function') {
         options.onInitError(error, err as KeycloakError)
       } else {
         console.error(error, err)
       }
-    })
+    }
+
 
   function updateWatchVariables(isAuthenticated = false) {
     watch.authenticated = isAuthenticated
