@@ -114,7 +114,9 @@ function init(config: VueKeycloakConfig, watch: VueKeycloakInstance, options:Vue
   keycloak.onReady = function (authenticated) {
     updateWatchVariables(authenticated)
     watch.ready = true
-    typeof options.onReady === 'function' && options.onReady(keycloak, watch)
+    if (typeof options.onReady === 'function') {
+      options.onReady(keycloak, watch)
+    }
   }
   keycloak.onAuthSuccess = function () {
     if (!autoRefreshToken) {
@@ -144,32 +146,38 @@ function init(config: VueKeycloakConfig, watch: VueKeycloakInstance, options:Vue
   }
   keycloak.onAuthRefreshSuccess = function () {
     updateWatchVariables(true)
-    typeof options.onAuthRefreshSuccess === 'function' &&
-    options.onAuthRefreshSuccess(keycloak)
+    if (typeof options.onAuthRefreshSuccess === 'function') {
+      options.onAuthRefreshSuccess(keycloak)
+    }
   }
   keycloak.onAuthRefreshError = function () {
     updateWatchVariables(false)
-    typeof options.onAuthRefreshError === 'function' &&
-    options.onAuthRefreshError(keycloak)
+    if (typeof options.onAuthRefreshError === 'function') {
+      options.onAuthRefreshError(keycloak)
+    }
   }
   keycloak.onAuthLogout = function () {
     updateWatchVariables(false)
-    typeof options.onAuthLogout === 'function' &&
-    options.onAuthLogout(keycloak)
+    if (typeof options.onAuthLogout === 'function') {
+      options.onAuthLogout(keycloak)
+    }
   }
   keycloak
     .init(options.init)
     .then((authenticated) => {
       updateWatchVariables(authenticated)
-      typeof options.onInitSuccess === 'function' &&
-      options.onInitSuccess(authenticated)
+      if (typeof options.onInitSuccess === 'function') {
+        options.onInitSuccess(authenticated)
+      }
     })
     .catch((err:KeycloakError) => {
       updateWatchVariables(false)
       const error = Error('Failure during initialization of keycloak-js adapter')
-      typeof options.onInitError === 'function'
-        ? options.onInitError(error, err)
-        : console.error(error, err)
+      if (typeof options.onInitError === 'function') {
+        options.onInitError(error, err as KeycloakError)
+      } else {
+        console.error(error, err)
+      }
     })
 
   function updateWatchVariables(isAuthenticated = false) {
