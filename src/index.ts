@@ -1,9 +1,9 @@
-import Keycloak from 'keycloak-js'
+import Keycloak from 'keycloak-js/lib/keycloak'
+import type { KeycloakError } from 'keycloak-js/lib/keycloak'
 import type {
   VueKeycloakConfig,
   VueKeycloakOptions,
   VueKeycloakInstance,
-  KeycloakError,
   VueKeycloakTokenParsed, Vue2Vue3App
 } from './types'
 
@@ -109,7 +109,7 @@ function vue2AndVue3Reactive(app: Vue2Vue3App, object: VueKeycloakInstance): Pro
 
 function init(config: VueKeycloakConfig, watch: VueKeycloakInstance, options:VueKeycloakOptions) {
   const keycloak = new Keycloak(config)
-  const { updateInterval } = options
+  const { updateInterval, autoRefreshToken = true } = options
 
   keycloak.onReady = function (authenticated) {
     updateWatchVariables(authenticated)
@@ -117,18 +117,29 @@ function init(config: VueKeycloakConfig, watch: VueKeycloakInstance, options:Vue
     typeof options.onReady === 'function' && options.onReady(keycloak, watch)
   }
   keycloak.onAuthSuccess = function () {
+    if (!autoRefreshToken) {
+      return;
+    }
     // Check token validity every 10 seconds (10 000 ms) and, if necessary, update the token.
     // Refresh token if it's valid for less then 60 seconds
     const updateTokenInterval = setInterval(
       () =>
-        keycloak.updateToken(60).catch(() => {
-          keycloak.clearToken()
+        keycloak.updateToken(60)
+          .then((updated: boolean) => {
+            if (options.init?.enableLogging) {
+              console.log(`[vue-keycloak-js] Token ${updated ? 'updated' : 'not updated'}`)
+            }
+          }).catch((error: unknown) => {
+            if (options.init?.enableLogging) {
+              console.log(`[vue-keycloak-js] Error while updating token: ${error}`)
+            }
+            keycloak.clearToken()
         }),
       updateInterval ?? 10000
     )
     watch.logoutFn = () => {
       clearInterval(updateTokenInterval)
-      keycloak.logout(options.logout)
+      return keycloak.logout(options.logout)
     }
   }
   keycloak.onAuthRefreshSuccess = function () {
